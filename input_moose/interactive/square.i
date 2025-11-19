@@ -18,7 +18,7 @@ cuSpecHeat = 1.0  # J.kg^-1.K^-1
 
 [Mesh]
     type = FileMesh
-    file = 'mesh.msh'
+    file = 'mesh_square.msh'
 []
 
 [Variables]
