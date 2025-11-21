@@ -5,7 +5,7 @@ Comparing the following FEM implementations - NGSolve, FEniCS, and MOOSE
 ## Cases
 
 
-### Case1 - Poisson equation on a 2D domain, steady state, Dirichlet BCs and xy-dependent source, mesh_square.msh, serial, analytical solution available
+### Case1 -- Poisson equation on a 2D domain, steady state, Dirichlet BCs and xy-dependent source, mesh_square.msh, serial, analytical solution available
 
 * NGSolve
   * NGSolve run time = 0.024 seconds
@@ -27,7 +27,7 @@ Comparing the following FEM implementations - NGSolve, FEniCS, and MOOSE
   * Avg. absolute error between MOOSE and analytical solution : 2.873e-05.
 
 
-## Case2 - Poisson equation on a 2D domain, steady state, Dirichlet and x dependent Neumann BCs, mesh_square.msh, serial
+### Case2 -- Poisson equation on a 2D domain, steady state, Dirichlet and x dependent Neumann BCs, mesh_square.msh, serial
 
 * NGSolve
   * NGSolve run time = 0.023 seconds
