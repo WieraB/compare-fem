@@ -32,6 +32,11 @@ cuSpecHeat = 1.0  # J.kg^-1.K^-1
         type = HeatConduction
         variable = temperature
     []
+    [heat_source]
+        type = BodyForce
+        variable = temperature
+        function = '32*(y*(1-y)+x*(1-x))'
+    []
 []
 
 [Materials]
@@ -61,16 +66,16 @@ cuSpecHeat = 1.0  # J.kg^-1.K^-1
         value = '0'
     []
     [bc_top]
-        type = FunctionNeumannBC
+        type = DirichletBC
         variable = temperature
         boundary = 'Top'
-        function = '10*sin(6*x)'
+        value = '0'
     []
     [bc_bottom]
-        type = FunctionNeumannBC
+        type = DirichletBC
         variable = temperature
         boundary = 'Bottom'
-        function = '10*sin(6*x)'
+        value = '0'
     []
 []
 
