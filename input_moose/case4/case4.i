@@ -1,24 +1,25 @@
 #-------------------------------------------------------------------------
-# pyvale: simple,2Dplate,1mat,thermal,steady,
+# pyvale: gmsh,3Dstc,1mat,thermal,steady,
 #-------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------
 #_* MOOSEHERDER VARIABLES - START
 
 # Thermal Loads/BCs
-coolantTemp = 0.0      # degC
+coolantTemp = 100.0      # degC
+surfHeatFlux = 5.0e6    # W.m^-2
 
-# Material Properties
-cuDensity = 1.0  # kg.m^-3
-cuThermCond = 1.0 # W.m^-1.K^-1
-cuSpecHeat = 1.0  # J.kg^-1.K^-1
+# Material Properties: Pure (OFHC) Copper at 250degC
+cuDensity = 8829.0  # kg.m^-3
+cuThermCond = 384.0 # W.m^-1.K^-1
+cuSpecHeat = 406.0  # J.kg^-1.K^-1
 
 #** MOOSEHERDER VARIABLES - END
 #-------------------------------------------------------------------------
 
 [Mesh]
     type = FileMesh
-    file = 'mesh_square.msh'
+    file = 'mesh_block_pipe_refined.msh'
 []
 
 [Variables]
@@ -31,11 +32,6 @@ cuSpecHeat = 1.0  # J.kg^-1.K^-1
     [heat_conduction]
         type = HeatConduction
         variable = temperature
-    []
-    [heat_source]
-        type = BodyForce
-        variable = temperature
-        function = '32*(y*(1-y)+x*(1-x))'
     []
 []
 
@@ -50,32 +46,29 @@ cuSpecHeat = 1.0  # J.kg^-1.K^-1
         prop_names = 'density'
         prop_values = ${cuDensity}
     []
+    [heatTransCoeff]
+        type = ParsedMaterial
+        property_name = heatTransCoeff
+        coupled_variables = temperature
+        # expression = '125.0e3+temperature / 100 + 1'
+        expression = 'temperature * 100 + 100'
+        # expression = 'exp(temperature/100) + 100'
+    []
 []
 
 [BCs]
-    [bc_left]
-        type = DirichletBC
+    [heat_flux_out]
+        type = ConvectiveHeatFluxBC
         variable = temperature
-        boundary = 'Left'
-        value = '0'
+        boundary = 'bc-pipe-htc'
+        T_infinity = ${coolantTemp}
+        heat_transfer_coefficient = heatTransCoeff
     []
-    [heat_right]
-        type = DirichletBC
+    [heat_flux_in]
+        type = NeumannBC
         variable = temperature
-        boundary = 'Right'
-        value = '0'
-    []
-    [bc_top]
-        type = DirichletBC
-        variable = temperature
-        boundary = 'Top'
-        value = '0'
-    []
-    [bc_bottom]
-        type = DirichletBC
-        variable = temperature
-        boundary = 'Bottom'
-        value = '0'
+        boundary = 'bc-top-heatflux'
+        value = ${surfHeatFlux}
     []
 []
 
@@ -96,7 +89,6 @@ cuSpecHeat = 1.0  # J.kg^-1.K^-1
     nl_rel_tol = 1e-6     # default = 1e-8, set 1e-6
     petsc_options_iname = '-pc_type -pc_hypre_type'
     petsc_options_value = 'hypre boomeramg'
-    line_search='none'
 []
 
 [Outputs]

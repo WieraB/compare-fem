@@ -5,7 +5,7 @@ Comparing the following FEM implementations - NGSolve, FEniCS, and MOOSE
 ## Cases
 
 
-### Case 1 -- Poisson equation on a 2D domain, steady state, Dirichlet BCs and xy-dependent source, mesh_square.msh, serial, analytical solution available
+### Case 1 -- Linear Poisson equation on a 2D domain, steady state, Dirichlet BCs and xy-dependent source, mesh_square.msh, serial, analytical solution available
 
 * NGSolve
   * NGSolve run time = 0.024 seconds
@@ -27,7 +27,7 @@ Comparing the following FEM implementations - NGSolve, FEniCS, and MOOSE
   * Avg. absolute error between MOOSE and analytical solution : 2.873e-05.
 
 
-### Case 2 -- Poisson equation on a 2D domain, steady state, Dirichlet and x dependent Neumann BCs, mesh_square.msh, serial
+### Case 2 -- Linear Poisson equation on a 2D domain, steady state, Dirichlet and x dependent Neumann BCs, mesh_square.msh, serial
 
 * NGSolve
   * NGSolve run time = 0.023 seconds
@@ -42,7 +42,7 @@ Comparing the following FEM implementations - NGSolve, FEniCS, and MOOSE
 * MOOSE
   * MOOSE run time = 2.350 seconds
 
-### Case 3 -- Heat conduction on a 3D domain, steady state, Neumann BCs, mesh_block_pipe_refined.msh, serial
+### Case 3 -- Linear heat conduction on a 3D domain, steady state, Neumann BCs, mesh_block_pipe_refined.msh, serial (based on case09 in pyvale simcases)
 
 * NGSolve
   * NGSolve run time = 0.255 seconds
@@ -57,4 +57,16 @@ Comparing the following FEM implementations - NGSolve, FEniCS, and MOOSE
 * MOOSE
   * MOOSE run time = 3.389 seconds
 
+### Case 4 -- Nonlinear heat conduction on a 3D domain, steady state, Neumann BCs, mesh_block_pipe_refined.msh, serial -- Nonlienar version of Case 3
+
+* NGSolve
+  * NGSolve run time = 2.742 seconds
+  * Max. absolute error between NGSolve and MOOSE : 2.396e-04.
+  * Avg. absolute error between NGSolve and MOOSE : 2.224e-04.
+
+* FEniCS
+
+
+* MOOSE
+  * MOOSE run time = 10.324 seconds
 
