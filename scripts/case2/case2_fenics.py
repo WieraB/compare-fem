@@ -19,6 +19,10 @@ mesh_path = "./meshes/mesh_square.msh"
 output_path = f"./output/{case_name}/{case_name}_fenics.vtu"
 
 #%%
+# Define initial distribution
+T_inf = 0.0
+
+#%%
 # Load the mesh
 # WARNING!!! It's important to specify that the mesh is 2D, otherwise it will perceive it as 3D
 
@@ -61,6 +65,8 @@ v = ufl.TestFunction(V)
 
 uh = fem.Function(V)
 
+uh.x.array[:] = T_inf
+
 x = ufl.SpatialCoordinate(msh)
 g = 10 * ufl.sin(6 * x[0])
 a = ufl.inner(ufl.grad(uh), ufl.grad(v)) * ufl.dx
@@ -77,12 +83,12 @@ F = a - L
 petsc_options = {
     "snes_type": "newtonls",
     "snes_linesearch_type": "none",
-    "snes_atol": 1e-10,
-    "snes_rtol": 1e-10,
+    "snes_atol": 1e-6,
+    "snes_rtol": 1e-6,
     "snes_monitor": None,
     "ksp_error_if_not_converged": True,
     "ksp_type": "cg",
-    "ksp_rtol": 1e-10,
+    "ksp_rtol": 1e-6,
     "ksp_monitor": None,
     "pc_type": "hypre",
     "pc_hypre_type": "boomeramg",

@@ -19,16 +19,6 @@ mesh_path = "./meshes/mesh_square.msh"
 
 output_path = f"./output/{case_name}/{case_name}_ngsolve.vtu"
 
-
-#%%
-# Define initial distribution and solver parameters
-T_inf = 0.0
-
-# Solver parameters
-maxits = 100
-tol = 3.6
-precision = 1e-6
-
 #%%
 # Load the mesh
 # WARNING!!! If there is an error, it is likely because the version of .msh file is above 2.
@@ -43,52 +33,27 @@ print("ElementBoundary=", msh.GetBoundaries())
 # Define the equation and BCs
 fes = H1(msh, order=1, dirichlet="Left|Right|Top|Bottom")
 
-gfu = GridFunction(fes)
-gfu.Set(T_inf)
-res = gfu.vec.CreateVector()
-du = gfu.vec.CreateVector()
-
 u = fes.TrialFunction()
 v = fes.TestFunction()
+
+a = BilinearForm(fes, symmetric=True)
+a += grad(u)*grad(v)*dx
+
+f = LinearForm(fes)
+f += 32 * (y*(1-y)+x*(1-x)) * v * dx
 
 #%%
 # Run the simulation
 
-for it in range(maxits):
-    print ("Iteration {:3}  ".format(it),end="")
+pre = preconditioners.Local(a)
+a.Assemble()
+f.Assemble()
 
-    a = BilinearForm(fes, symmetric=True)
-    a += grad(u)*grad(v)*dx
-    a.Assemble()
+gfu = GridFunction(fes)
 
-    f = LinearForm(fes)
-    f += 32 * (y*(1-y)+x*(1-x)) * v * dx
-    f.Assemble()
-
-    pre = Preconditioner(a, type="local")
-
-    ngsglobals.msg_level = 1
-    inv = CGSolver(a.mat, pre.mat, precision = precision,printrates=True)
-
-    res.data = a.mat * gfu.vec - f.vec
-    res_norm = np.linalg.norm(res.FV().NumPy())
-    if it == 0:
-            res0_norm = res_norm
-
-    du.data = inv * (-res)
-    gfu.vec.data += du  # Newton-like update
-    
-    rel_res = res_norm / res0_norm
-    print(f"Relative residual = {rel_res:.2e}")
-
-    if rel_res < tol:
-        print("Converged after {} iterations".format(it + 1))
-        break
-
-if it == maxits - 1:
-    print("Did not converge within {} iterations".format(maxits))
-    print("Final relative residual = {:.2e}".format(rel_res))
-
+ngsglobals.msg_level = 1
+inv = CGSolver(a.mat, pre.mat, precision = 1e-10, printrates=True)
+gfu.vec.data = inv*f.vec
 
 end_time = time.perf_counter()
 run_time = end_time - start_time

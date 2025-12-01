@@ -33,11 +33,6 @@ cuDensity = 8829.0  # kg.m^-3
 cuThermCond = 384.0 # W.m^-1.K^-1
 cuSpecHeat = 406.0  # J.kg^-1.K^-1
 
-# Solver parameters
-maxits = 100
-tol = 1e-6
-precision = 1e-6
-
 #%%
 # Load the mesh
 # WARNING!!! If there is an error, it is likely because the version of .msh file is above 2.
@@ -51,52 +46,29 @@ print("ElementBoundary=", msh.GetBoundaries())
 #%%
 # Define the equation and BCs
 fes = H1(msh, order=1)
-gfu = GridFunction(fes)
-gfu.Set(T_inf)
-res = gfu.vec.CreateVector()
-du = gfu.vec.CreateVector()
 
 u = fes.TrialFunction()
 v = fes.TestFunction()
 
+a = BilinearForm(fes, symmetric=True)
+a += cuThermCond*grad(u)*grad(v)*dx
+a += heatTransCoeff * u * v * ds("bc-pipe-htc")
+
+f = LinearForm(fes)
+f += surfHeatFlux * v * ds("bc-top-heatflux") + heatTransCoeff * T_inf * v * ds("bc-pipe-htc")
+
 #%%
 # Run the simulation
 
-for it in range(maxits):
-    print ("Iteration {:3}  ".format(it),end="")
+pre = preconditioners.Local(a)
+a.Assemble()
+f.Assemble()
 
-    a = BilinearForm(fes, symmetric=True)
-    a += cuThermCond*grad(u)*grad(v)*dx
-    a += heatTransCoeff * u * v * ds("bc-pipe-htc")
-    a.Assemble()
+gfu = GridFunction(fes)
 
-    f = LinearForm(fes)
-    f += surfHeatFlux * v * ds("bc-top-heatflux") + heatTransCoeff * T_inf * v * ds("bc-pipe-htc")
-    f.Assemble()
-
-    pre = Preconditioner(a, type="local")
-
-    ngsglobals.msg_level = 1
-    inv = CGSolver(a.mat, pre.mat, precision = precision,printrates=True)
-
-    res.data = a.mat * gfu.vec - f.vec
-    res_norm = np.linalg.norm(res.FV().NumPy())
-    if it == 0:
-            res0_norm = res_norm
-
-    du.data = inv * (-res)
-    gfu.vec.data += du  # Newton-like update
-    
-    rel_res = res_norm / res0_norm
-    print(f"Relative residual = {rel_res:.2e}")
-
-    if rel_res < tol:
-        print("Converged after {} iterations".format(it + 1))
-        break
-
-if it == maxits - 1:
-    print("Did not converge within {} iterations".format(maxits))
-    print("Final relative residual = {:.2e}".format(rel_res))
+ngsglobals.msg_level = 1
+inv = CGSolver(a.mat, pre.mat, precision = 1e-10, printrates=True)
+gfu.vec.data = inv*f.vec
 
 end_time = time.perf_counter()
 run_time = end_time - start_time

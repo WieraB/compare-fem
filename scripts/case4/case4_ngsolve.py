@@ -25,7 +25,7 @@ output_path = f"./output/{case_name}/{case_name}_ngsolve.vtu"
 
 # Thermal Loads/BCs
 coolantTemp = 100.0      # degC
-# heatTransCoeff = lambda temperature: np.exp(temperature/100) + 100
+heatTransCoeff = lambda temperature: np.exp(temperature/100) + 100
 heatTransCoeff = lambda temperature: temperature * 100 + 100
 surfHeatFlux = 5.0e6    # W.m^-2
 T_inf = coolantTemp
@@ -38,6 +38,7 @@ cuSpecHeat = 406.0  # J.kg^-1.K^-1
 # Solver parameters
 maxits = 100
 tol = 1e-6
+precision = 1e-6
 
 #%%
 # Define heat transfer coefficient function
@@ -88,7 +89,7 @@ for it in range(maxits):
     f.Assemble()
 
     pre = Preconditioner(a, type="local")
-    inv = CGSolver(a.mat, pre.mat)
+    inv = CGSolver(a.mat, pre.mat, precision = precision)
 
     res.data = a.mat * gfu.vec - f.vec
     res_norm = np.linalg.norm(res.FV().NumPy())

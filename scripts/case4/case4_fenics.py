@@ -14,13 +14,24 @@ import pyvista as pv
 
 #%%
 # Set file locations
-case_name = "case1"
-mesh_path = "./meshes/mesh_square.msh"
+case_name = "case4"
+mesh_path = "./meshes/mesh_block_pipe_refined.msh"
 output_path = f"./output/{case_name}/{case_name}_fenics.vtu"
 
 #%%
-# Define initial distribution
-T_inf = 0.0
+# Define material properties and loads
+
+# Thermal Loads/BCs
+coolantTemp = 100.0      # degC
+# heatTransCoeff = 125.0e3 # W.m^-2.K^-1
+heatTransCoeff = lambda temperature: temperature * 100 + 100
+surfHeatFlux = 5.0e6    # W.m^-2
+T_inf = coolantTemp
+
+# Material Properties: Pure (OFHC) Copper at 250degC
+cuDensity = 8829.0  # kg.m^-3
+cuThermCond = 384.0 # W.m^-1.K^-1
+cuSpecHeat = 406.0  # J.kg^-1.K^-1
 
 #%%
 # Load the mesh
@@ -34,7 +45,7 @@ gmsh.model.add("loaded_mesh")
 
 gmsh.open(mesh_path)
 
-msh_data = dolfinx.io.gmsh.model_to_mesh(gmsh.model, MPI.COMM_SELF, 0, gdim=2)
+msh_data = dolfinx.io.gmsh.model_to_mesh(gmsh.model, MPI.COMM_SELF, 0, gdim=3)
 msh = msh_data.mesh
 cell_marker = msh_data.cell_tags
 facet_marker = msh_data.facet_tags
@@ -48,24 +59,8 @@ gmsh.finalize()
 
 V = fem.functionspace(msh, ("Lagrange", 1))
 
-left_tag = 1
-facets_left = facet_marker.find(left_tag)
-right_tag = 2
-facets_right = facet_marker.find(right_tag)
-top_tag = 3
-facets_top = facet_marker.find(top_tag)
-bottom_tag = 4
-facets_bottom = facet_marker.find(bottom_tag)
-
-dofs_left = fem.locate_dofs_topological(V=V, entity_dim=1, entities=facets_left)
-dofs_right = fem.locate_dofs_topological(V=V, entity_dim=1, entities=facets_right)
-dofs_top = fem.locate_dofs_topological(V=V, entity_dim=1, entities=facets_top)
-dofs_bottom = fem.locate_dofs_topological(V=V, entity_dim=1, entities=facets_bottom)
-
-bc_left = fem.dirichletbc(value=ScalarType(0), dofs=dofs_left, V=V)
-bc_right = fem.dirichletbc(value=ScalarType(0), dofs=dofs_right, V=V)
-bc_top = fem.dirichletbc(value=ScalarType(0), dofs=dofs_top, V=V)
-bc_bottom = fem.dirichletbc(value=ScalarType(0), dofs=dofs_bottom, V=V)
+bc_top_heatflux_tag = 3
+bc_pipe_htc_tag = 4
 
 v = ufl.TestFunction(V)
 
@@ -73,12 +68,11 @@ uh = fem.Function(V)
 
 uh.x.array[:] = T_inf
 
-x = ufl.SpatialCoordinate(msh)
-a = ufl.inner(ufl.grad(uh), ufl.grad(v)) * ufl.dx
+ds = ufl.Measure("ds", domain=msh, subdomain_data=facet_marker)
+a = cuThermCond * ufl.inner(ufl.grad(uh), ufl.grad(v)) * ufl.dx
+a += heatTransCoeff(uh) * ufl.inner(uh, v) * ds(bc_pipe_htc_tag)
 
-f = 32 * (x[1]*(1-x[1])+x[0]*(1-x[0]))
-
-L = ufl.inner(f, v) * ufl.dx
+L = surfHeatFlux * v * ds(bc_top_heatflux_tag) + heatTransCoeff(uh) * T_inf * v * ds(bc_pipe_htc_tag)
 
 F = a - L
 
@@ -104,7 +98,7 @@ petsc_options = {
 problem = NonlinearProblem(
     F,
     uh,
-    bcs=[bc_left, bc_right, bc_top, bc_bottom],
+    bcs=[],
     petsc_options=petsc_options,
     petsc_options_prefix="nonlinpoisson",
 )
@@ -122,14 +116,12 @@ run_time = end_time - start_time
 print(f'FEniCS run time = {run_time:.3f} seconds')
 
 #%%
-# Save the results and compare with analytical solution
+# Save the results
 # Extracting solution vector from solution function uh 
 # and re-arranging dofs to match mesh dof order to match what we did in NGSolve example
 
 res = pv.read(mesh_path)
 points = res.points
-x_coord = points[:, 0]
-y_coord = points[:, 1]
 
 sol_unordered = uh.x.array
 points_unordered = V.tabulate_dof_coordinates()
@@ -140,14 +132,6 @@ _, indices = tree2.query(points)
 
 sol = sol_unordered[indices]
 
-sol_exact = 16*x_coord*(1-x_coord)*y_coord*(1-y_coord)
-abs_error = np.abs(sol - sol_exact)
-abs_error_max = np.max(abs_error)
-abs_error_mean = np.mean(abs_error)
-print(f"Max. absolute error between FEniCS and analytical solution : {abs_error_max:.3e}.")
-print(f"Avg. absolute error between FEniCS and analytical solution : {abs_error_mean:.3e}.")
-
 res["sol"] = sol
-res['absolute_error'] = abs_error
 
 res.save(output_path)

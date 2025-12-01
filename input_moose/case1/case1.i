@@ -91,7 +91,7 @@ cuSpecHeat = 1.0  # J.kg^-1.K^-1
     solve_type = 'NEWTON'
     l_max_its = 100       # default = 1000
     nl_max_its = 100
-    l_tol = 1e-5          # default = 1e-5, worse match with ngsove if it's 1e-6
+    l_tol = 1e-6          # default = 1e-5, worse match with ngsove if it's 1e-6
     nl_abs_tol = 1e-6     # default = 1e-50, set 1e-6
     nl_rel_tol = 1e-6     # default = 1e-8, set 1e-6
     petsc_options_iname = '-pc_type -pc_hypre_type'
