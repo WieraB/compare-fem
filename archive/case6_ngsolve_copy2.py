@@ -15,38 +15,28 @@ from scipy.interpolate import interp1d
 
 #%%
 # Set file locations
-case_name = "case5"
-mesh_path = "./meshes/mesh_block_pipe_refined.msh"
+case_name = "case6"
+mesh_path = "./meshes/mesh_square_QUAD8.msh"
 
 output_path = f"./output/{case_name}/{case_name}_ngsolve.vtu"
 
 #%%
-# Define material properties, loads, and solver parameters
+# Define material properties, initial distribution, and solver parameters
 
-# Thermal Loads/BCs
-coolantTemp = 100.0      # degC
-# heatTransCoeff = lambda temperature: np.exp(temperature/100) + 100
-heatTransCoeff = lambda temperature: temperature * 100 + 100
-surfHeatFlux = 5.0e6    # W.m^-2
-T_inf = coolantTemp
+u_inf = 0.0
+topDisp = 1.0e-3  # m
 
-# Material Properties: Pure (OFHC) Copper at 250degC
-cuDensity = 8829.0  # kg.m^-3
-cuThermCond = 384.0 # W.m^-1.K^-1
-cuSpecHeat = 406.0  # J.kg^-1.K^-1
+# Material properties
+cuEMod= 108e9   # Pa
+cuPRatio = 0.33     # -
+mu = cuEMod / (2 * (1 + cuPRatio))
+lambda_ = cuEMod * cuPRatio / ((1 - 2 * cuPRatio) * (1 + cuPRatio))
 
 # Solver parameters
 maxits = 100
-tol = 1e-6
+tol = 1e-2
 precision = 1e-6
-num_threads = 4
-
-#%%
-# Define heat transfer coefficient function
-
-temps = np.arange(0, 3000, 0.5)
-h_values = heatTransCoeff(temps)
-h_func = interp1d(temps, h_values, fill_value="extrapolate")
+num_threads = 1
 
 #%%
 # Load the mesh
@@ -60,10 +50,23 @@ print("ElementBoundary=", msh.GetBoundaries())
 
 #%%
 # Define the equation and BCs
-fes = H1(msh, order=1)
-h_gf = GridFunction(H1(msh,order=1))
+
+# Strain function
+def epsilon(u):
+    return Sym(Grad(u))
+
+# Stress function
+def sigma(u):
+    return lambda_ * Trace(epsilon(u)) * Id(len(u)) + 2 * mu * epsilon(u)
+
+def Stress(strain):
+    return 2*mu*strain + lambda_*Trace(strain)*Id(2)    
+
+fes = VectorH1(msh, order=2, dirichlet="bottom|top")
 gfu = GridFunction(fes)
-gfu.Set(T_inf)
+gfu.Set((u_inf, u_inf))
+gfu.Set((0.0, 0.0), definedon=msh.Boundaries("bottom"))
+gfu.Set((0.0, topDisp), definedon=msh.Boundaries("top"))
 res = gfu.vec.CreateVector()
 du = gfu.vec.CreateVector()
 
@@ -79,30 +82,25 @@ with TaskManager():
 
     for it in range(maxits):
         print ("Iteration {:3}  ".format(it),end="")
-        temp = gfu.vec.data
-        h = h_func(temp)
-        h_gf.vec.data = h
-        h_cf = CoefficientFunction(h_gf)
     
-        a = BilinearForm(fes, symmetric=True)
-        a += cuThermCond*grad(u)*grad(v)*dx
-        a += h_cf * u * v * ds("bc-pipe-htc")
+        a = BilinearForm(InnerProduct(Stress(Sym(Grad(u))), Sym(Grad(v))).Compile()*dx)
         a.Assemble()
     
-        f = LinearForm(fes)
-        f += surfHeatFlux * v * ds("bc-top-heatflux") + h_cf * T_inf * v * ds("bc-pipe-htc")
-        f.Assemble()
+        # force = CF( (0.0, 0) )
+        # f = LinearForm(force*v*ds("left"))
+        # f.Assemble()
     
         pre = Preconditioner(a, type="local")
         inv = CGSolver(a.mat, pre.mat, precision = precision)
     
-        res.data = a.mat * gfu.vec - f.vec
+        # res.data = a.mat * gfu.vec - f.vec
+        res.data = a.mat * gfu.vec
         res_norm = np.linalg.norm(res.FV().NumPy())
         if it == 0:
                 res0_norm = res_norm
     
         du.data = inv * (-res)
-        gfu.vec.data += du
+        gfu.vec.data += du  # Newton-like update
         
         rel_res = res_norm / res0_norm
         print(f"Relative residual = {rel_res:.2e}")
@@ -120,13 +118,17 @@ end_time = time.perf_counter()
 run_time = end_time - start_time
 print(f'NGSolve run time = {run_time:.3f} seconds')
 
-# #%%
+#%%
 # Save the results
-
-sol = gfu.vec.FV().NumPy()
 
 res = pv.read(mesh_path)
 points = res.points
+
+sol = np.zeros((points.shape[0], 2))
+
+for i in range(points.shape[0]):
+    point = msh(points[i, 0], points[i, 1], points[i, 2])
+    sol[i, :] = gfu(point)
 
 res["sol"] = sol
 

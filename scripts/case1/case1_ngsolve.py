@@ -76,7 +76,7 @@ for it in range(maxits):
             res0_norm = res_norm
 
     du.data = inv * (-res)
-    gfu.vec.data += du  # Newton-like update
+    gfu.vec.data += du
     
     rel_res = res_norm / res0_norm
     print(f"Relative residual = {rel_res:.2e}")

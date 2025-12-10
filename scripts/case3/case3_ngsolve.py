@@ -85,7 +85,7 @@ for it in range(maxits):
             res0_norm = res_norm
 
     du.data = inv * (-res)
-    gfu.vec.data += du  # Newton-like update
+    gfu.vec.data += du
     
     rel_res = res_norm / res0_norm
     print(f"Relative residual = {rel_res:.2e}")
@@ -103,7 +103,7 @@ run_time = end_time - start_time
 print(f'NGSolve run time = {run_time:.3f} seconds')
 
 # #%%
-# Save the results and compare with analytical solution
+# Save the results
 
 sol = gfu.vec.FV().NumPy()
 
