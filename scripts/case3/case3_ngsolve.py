@@ -28,7 +28,7 @@ heatTransCoeff = 125.0e3 # W.m^-2.K^-1
 surfHeatFlux = 5.0e6    # W.m^-2
 T_inf = coolantTemp
 
-# Material Properties: Pure (OFHC) Copper at 250degC
+# Material properties
 cuDensity = 8829.0  # kg.m^-3
 cuThermCond = 384.0 # W.m^-1.K^-1
 cuSpecHeat = 406.0  # J.kg^-1.K^-1

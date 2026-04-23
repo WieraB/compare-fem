@@ -143,8 +143,6 @@ print(f'FEniCS run time = {run_time:.3f} seconds')
 #%%
 # Calculate stresses
 
-# W = fem.functionspace(msh, ("DG", 1, (msh.geometry.dim, msh.geometry.dim))) # Tensor-valued discontinuous space
-
 W1 = fem.functionspace(msh, ("Lagrange", order, (msh.geometry.dim, msh.geometry.dim)))
 W2 = fem.functionspace(msh, ("Lagrange", order))
 
